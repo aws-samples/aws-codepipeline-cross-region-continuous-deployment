@@ -7,7 +7,7 @@ This sample code is made available under a modified MIT license. See the LICENSE
 This reference architecture demonstrates how to use a single [AWS CodePipeline](https://aws.amazon.com/codepipeline/) in
 one of your primary regions to deploy application to multiple secondary regions to improve both latency and availability
 of your application. This orchestration of code movement from code checkin to deployment is securely handled 
-by [AWS CodePipeline](code-pipeline-url).
+by [AWS CodePipeline](https://aws.amazon.com/codepipeline/).
 
 ## Deployment Architecture
-![](https://raw.githubusercontent.com/aws-samples/aws-codepipeline-cross-region-continuous-deployment/images/multiregion-codepipeline.jpg)
+![](https://github.com/aws-samples/aws-codepipeline-cross-region-continuous-deployment/blob/master/images/multiregion-codepipeline.jpg)

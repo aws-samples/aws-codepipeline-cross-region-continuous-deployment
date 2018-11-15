@@ -1,0 +1,177 @@
+---
+Description: >
+  This template creates a resources for test, like artifact bucket, service role, webhook pipeline and test webhook.
+
+Parameters:
+  S3SourceBucket:
+    Type: String
+  S3SourceBucketKey:
+    Type: String
+  DeploymentGroupName:
+    Type: String
+  ApplicationName:
+    Type: String
+  USEast1ArtifactStoreBucket:
+    Type: String
+  USWest2ArtifactStoreBucket:
+    Type: String
+  APSouthEast2ArtifactStoreBucket:
+    Type: String
+
+Mappings:
+  SecondRegionMap:
+    us-west-2:
+      SecondRegion1: us-east-1
+      SecondRegion2: ap-southeast-2
+    us-east-1:
+      SecondRegion1: us-west-2
+      SecondRegion2: ap-southeast-2
+Resources:
+
+  CodePipelineServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: ''
+          Effect: Allow
+          Principal:
+            Service:
+            - codepipeline.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+      - PolicyName: CodePipelinePolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Action:
+            - s3:GetObject
+            - s3:GetObjectVersion
+            - s3:GetBucketVersioning
+            Resource: "*"
+            Effect: Allow
+          - Action:
+            - s3:PutObject
+            Resource:
+            - arn:aws:s3:::codepipeline*
+            - arn:aws:s3:::elasticbeanstalk*
+            Effect: Allow
+          - Action:
+            - codebuild:*
+            Resource: "*"
+            Effect: Allow
+          - Action:
+            - autoscaling:*
+            - cloudwatch:*
+            - s3:*
+            - sns:*
+            - cloudformation:*
+            - sqs:*
+            - iam:PassRole
+            Resource: "*"
+            Effect: Allow
+          - Action:
+            - lambda:InvokeFunction
+            - lambda:ListFunctions
+            Resource: "*"
+            Effect: Allow
+          - Action:
+            - codedeploy:CreateDeployment
+            - codedeploy:GetApplicationRevision
+            - codedeploy:GetDeployment
+            - codedeploy:GetDeploymentConfig
+            - codedeploy:RegisterApplicationRevision
+            Resource: "*"
+            Effect: Allow
+
+  MultiRegionPipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      RoleArn:
+        Fn::GetAtt:
+        - CodePipelineServiceRole
+        - Arn
+      Stages:
+        -
+          Name: Source
+          Actions:
+            -
+              Name: Source
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Version: 1
+                Provider: S3
+              OutputArtifacts:
+                -
+                  Name: SourceOutput
+              Configuration:
+                S3Bucket: !Ref S3SourceBucket
+                S3ObjectKey: !Ref S3SourceBucketKey
+                PollForSourceChanges: true
+              RunOrder: 1
+        -
+          Name: Prod
+          Actions:
+            -
+              Name: SecondRegion1Deploy
+              InputArtifacts:
+                -
+                  Name: SourceOutput
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: 1
+                Provider: CodeDeploy
+              Configuration:
+                ApplicationName: !Ref ApplicationName
+                DeploymentGroupName: !Ref DeploymentGroupName
+              RunOrder: 1
+              Region: !FindInMap [SecondRegionMap, !Ref "AWS::Region", SecondRegion1]
+            -
+              Name: SecondRegion2Deploy
+              InputArtifacts:
+                -
+                  Name: SourceOutput
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: 1
+                Provider: CodeDeploy
+              Configuration:
+                ApplicationName: !Ref ApplicationName
+                DeploymentGroupName: !Ref DeploymentGroupName
+              RunOrder: 1
+              Region: !FindInMap [SecondRegionMap, !Ref "AWS::Region", SecondRegion2]
+            -
+              Name: PrimaryRegionDeploy
+              InputArtifacts:
+                -
+                  Name: SourceOutput
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: 1
+                Provider: CodeDeploy
+              Configuration:
+                ApplicationName: !Ref ApplicationName
+                DeploymentGroupName: !Ref DeploymentGroupName
+              RunOrder: 1
+              Region: !Ref "AWS::Region"
+      ArtifactStores:
+        -
+          Region: us-west-2
+          ArtifactStore:
+            Type: S3
+            Location: !Ref USWest2ArtifactStoreBucket
+        -
+          Region: us-east-1
+          ArtifactStore:
+            Type: S3
+            Location: !Ref USEast1ArtifactStoreBucket
+        -
+          Region: ap-southeast-2
+          ArtifactStore:
+            Type: S3
+            Location: !Ref APSouthEast2ArtifactStoreBucket

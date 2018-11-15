@@ -1,0 +1,17 @@
+---
+Description: >
+  This template creates a resources for test, like artifact bucket, service role, webhook pipeline and test webhook.
+Parameters:
+  SourceCodeBucketNamePrefix:
+    Type: String
+Resources:
+  SourceCodeS3Bucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+      BucketName: !Join [-, [source-code-bucket, !Ref "AWS::Region", !Ref SourceCodeBucketNamePrefix]]
+      LifecycleConfiguration:
+        Rules:
+          - Status: "Enabled"
+            ExpirationInDays : "1"

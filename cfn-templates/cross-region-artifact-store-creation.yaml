@@ -1,0 +1,17 @@
+---
+Description: >
+  This template creates a resources for test, like artifact bucket, service role, webhook pipeline and test webhook.
+Parameters:
+  ArtifactStoreBucketNamePrefix:
+    Type: String
+Resources:
+  TestCrossRegionArtifactStoreS3Bucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+      BucketName: !Join [-, [cross-region-artifact-store-bucket, !Ref "AWS::Region", !Ref ArtifactStoreBucketNamePrefix]]
+      LifecycleConfiguration:
+        Rules:
+          - Status: "Enabled"
+            ExpirationInDays : "1"

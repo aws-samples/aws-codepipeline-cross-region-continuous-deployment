@@ -1,0 +1,109 @@
+{
+  "Description":"Launch nested CloudFormation stack to provision and run AWS CodeDeploy",
+  "AWSTemplateFormatVersion":"2010-09-09",
+  "Parameters":{
+    "EC2TagValue":{
+      "Description":"The tag value that identifies this as a target for deployments.",
+      "Type":"String",
+      "AllowedPattern":"[\\x20-\\x7E]*",
+      "ConstraintDescription":"Can contain only ASCII characters."
+    },
+    "EC2KeyPairName":{
+      "Description":"Name of an existing Amazon EC2 key pair to enable SSH or RDP access to the instances.",
+      "Type":"AWS::EC2::KeyPair::KeyName",
+      "MinLength":"1",
+      "MaxLength":"255",
+      "AllowedPattern":"[\\x20-\\x7E]*",
+      "ConstraintDescription":"Can contain only ASCII characters."
+    },
+    "ApplicationName":{
+      "Description":"Name of the application in the target group",
+      "Type":"String",
+      "AllowedPattern":"[\\x20-\\x7E]*",
+      "ConstraintDescription":"Can contain only ASCII characters."
+    },
+    "DeploymentGroupName":{
+      "Description":"Name of the deployment group that specifies which instances your application revisions are deployed to",
+      "Type":"String",
+      "AllowedPattern":"[\\x20-\\x7E]*",
+      "ConstraintDescription":"Can contain only ASCII characters."
+    },
+    "EC2TagTagKeyName":{
+      "Type":"String",
+      "Default":"Name",
+      "Description":"The tag name that is associated with EC2 instances on which CodeDeploy agent is installed"
+    }
+  },
+  "Resources":{
+    "CodeDeployEC2InstancesStack":{
+      "Type":"AWS::CloudFormation::Stack",
+      "Properties":{
+        "TemplateURL": "http://s3.amazonaws.com/aws-codedeploy-us-east-1/templates/latest/CodeDeploy_SampleCF_Template.json",
+        "TimeoutInMinutes":"60",
+        "Parameters":{
+          "TagValue":{
+            "Ref":"EC2TagValue"
+          },
+          "KeyPairName":{
+            "Ref":"EC2KeyPairName"
+          }
+        }
+      }
+    },
+    "MyApplication":{
+      "Type":"AWS::CodeDeploy::Application",
+      "DependsOn":"CodeDeployEC2InstancesStack",
+      "Properties" : {
+        "ApplicationName" : {
+          "Ref":"ApplicationName"
+        }
+      }
+    },
+    "MyDeploymentGroup":{
+      "Type":"AWS::CodeDeploy::DeploymentGroup",
+      "DependsOn":"MyApplication",
+      "Properties":{
+        "DeploymentGroupName" : {
+          "Ref":"DeploymentGroupName"
+        },
+        "ApplicationName":{
+          "Ref":"MyApplication"
+        },
+        "Ec2TagFilters":[
+          {
+            "Key":{
+              "Ref":"EC2TagTagKeyName"
+            },
+            "Value":{
+              "Ref":"EC2TagValue"
+            },
+            "Type":"KEY_AND_VALUE"
+          }
+        ],
+        "ServiceRoleArn":{
+          "Fn::GetAtt":[
+            "CodeDeployEC2InstancesStack",
+            "Outputs.CodeDeployTrustRoleARN"
+          ]
+        }
+      }
+    }
+  },
+  "Outputs":{
+    "MyAWSAccountId":{
+      "Value":{
+        "Ref":"AWS::AccountId"
+      }
+    },
+    "MyApplication":{
+      "Value":{
+        "Ref":"MyApplication"
+      }
+    },
+    "MyDeploymentGroup":{
+      "Value":{
+        "Ref":"MyDeploymentGroup"
+      }
+    }
+  }
+}
